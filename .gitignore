@@ -1,0 +1,14 @@
+# 環境變數檔案，包含敏感資訊
+.env
+
+# Node.js 依賴套件
+node_modules
+
+# Log 檔案
+*.log
+npm-debug.log*
+
+# Other
+run.bat
+server.js
+*.xlsx

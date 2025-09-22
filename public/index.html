@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幸運大抽獎</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0c0c2c; /* Dark blue background */
+            background-image: radial-gradient(circle, #303050, #0c0c2c 80%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: rgba(12, 12, 44, 0.5);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            padding: 2rem; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; max-width: 90%; width: 800px;
+        }
+        h1 { color: #FFD700; text-shadow: 0 0 8px #FFD700; margin-bottom: 2rem; }
+        h2 { color: #eee; }
+        .draw-section {
+            margin-top: 2rem;
+            display: none; /* Hide by default, controlled by JS */
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .draw-section input { padding: 0.8rem; width: 90%; max-width: 400px; margin: 0; border: 1px solid #ccc; border-radius: 5px; font-size: 1rem; }
+        .draw-section button { width: 90%; max-width: 400px; margin-top: 1rem; }
+        button { padding: 0.8rem 1.5rem; font-size: 1.2rem; color: white; background: linear-gradient(45deg, #3498db, #8e44ad); border: none; border-radius: 5px; cursor: pointer; transition: transform 0.2s; }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        button:hover:not(:disabled) { transform: scale(1.05); }
+        .result-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: white; padding: 2rem; border-radius: 10px; text-align: center; }
+        .modal-content h2 { color: #e67e22; }
+        .modal-content p { font-size: 1.2rem; }
+
+        /* Turntable Styles */
+        .wheel-container {
+            position: relative;
+            width: 380px;
+            height: 380px;
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+            display: none; /* 1. 初始隱藏轉盤 */
+        }
+        .wheel-container::before {
+            content: '';
+            position: absolute;
+            width: 440px;
+            height: 440px;
+            background: linear-gradient(145deg, #FFD700, #F57C00); /* 黃金質感漸層 */
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), inset 0 0 15px rgba(0,0,0,0.3); /* 黃金光暈 */
+            z-index: -1;
+        }
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            transition: transform 6s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* 增加內陰影以產生厚度感 */
+            z-index: 1;
+        }
+        .wheel-slice {
+            position: absolute;
+            width: 60%;
+            height: 60%;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0% 0%;
+        }
+        .content-wrapper {
+            /* This container is now just for rotating the content into place */
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0% 0%; /* Corrected: Match the slice's origin for proper rotation */
+        }
+        .inner-content {
+            /* This container holds the actual image and text */
+            position: absolute;
+            width: 160px;
+            top: 10%;
+            left: 30px; /* Distance from the center */
+            text-align: center;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+        }
+        .slice-image {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+            margin-bottom: 8px; /* Simplified: Space between image and text */
+        }
+        .slice-text {
+            font-size: 14px;
+            max-width: 85%;
+            word-break: break-word;
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        .center-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #e52d27, #b31217);
+            border-radius: 50%;
+            border: 4px solid #f1f2f6;
+            box-shadow: 0 0 15px #e52d27, inset 0 0 10px rgba(0,0,0,0.5);
+            z-index: 5;
+            color: white;
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        .center-button::before {
+            content: '';
+            position: absolute;
+            bottom: 95%; /* 將指針定位在圓形按鈕正上方 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background: #c42021;
+            clip-path: polygon(50% 0, 0 100%, 100% 100%); /* 向上指的三角形 */
+        }
+        .center-button:hover:not(:disabled) {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 0 25px #87CEEB, inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .center-button:disabled {
+            background: radial-gradient(circle, #a11d18, #800d10);
+            cursor: not-allowed;
+            color: #f1f2f6;
+            opacity: 0.7;
+        }
+        .jewel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 15px;
+            height: 15px;
+            margin: -7.5px 0 0 -7.5px; /* 讓中心點對齊 */
+            border-radius: 50%;
+            z-index: 2;
+            box-shadow: inset 0 -2px 3px rgba(0,0,0,0.4), 0 1px 1px rgba(255,255,255,0.5);
+            transform-origin: center center; /* 設置旋轉中心為寶石自己的中心 */
+            pointer-events: none; /* 避免擋到按鈕 */
+        }
+        .lang-select-section {
+            /* Show by default, controlled by JS */
+            margin-top: 2rem;
+        }
+        .lang-switcher {
+            margin-top: 1rem;
+        }
+        .lang-switcher a {
+            color: #FFD700;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 0 15px;
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 data-i18n-key="mainTitle">幸運大抽獎</h1>
+        <div class="wheel-container">
+            <div class="wheel" id="wheel">
+                <!-- Slices will be generated by JS -->
+            </div>
+            <button id="drawButton" class="center-button" data-i18n-key="goBtn">GO</button>
+        </div>
+        <div id="drawSection" class="draw-section">
+            <h2 data-i18n-key="userInfoTitle">填寫基本資料</h2>
+            <input type="text" id="userIdInput" data-i18n-placeholder-key="userIdPlaceholder" placeholder="請輸入工號">
+            <input type="text" id="userNameInput" data-i18n-placeholder-key="userNamePlaceholder" placeholder="請輸入姓名">
+            <button id="checkUserButton" data-i18n-key="checkQualificationBtn">前往抽獎</button>
+            <p id="errorMessage" style="color: red; height: 1em; margin-top: 1rem;"></p>
+        </div>
+        <div id="langSelectSection" class="lang-select-section">
+            <h2 data-i18n-key="selectLangTitle">請選擇語言 / Please Select Language</h2>
+            <div class="lang-switcher">
+                <a onclick="selectLanguageAndShowForm('zh')">中文</a> | <a onclick="selectLanguageAndShowForm('en')">English</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultModal" class="result-modal">
+        <div class="modal-content">
+            <h2 id="modalTitle"></h2>
+            <p id="modalMessage"></p>
+            <div id="modalImageContainer" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                <img id="modalPrizeIcon" src="" alt="獎品圖案" style="max-width: 150px; max-height: 150px; border-radius: 10px; display: none; object-fit: contain; border: 1px solid #eee;">
+                <img id="modalPrizePhoto" src="" alt="獎品照片" style="max-width: 150px; max-height: 150px; border-radius: 10px; display: none; object-fit: contain; border: 1px solid #eee;">
+            </div>
+            <button onclick="closeModal()" data-i18n-key="modalCloseBtn">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            'en': {
+                'pageTitle': 'Lucky Draw',
+                'mainTitle': 'Lucky Draw',
+                'userInfoTitle': 'Enter Your Details',
+                'userIdPlaceholder': 'Enter your Employee ID',
+                'userNamePlaceholder': 'Enter your Name',
+                'checkQualificationBtn': 'Proceed to Draw',
+                'goBtn': 'GO',
+                'goBtnInProgress': '...',
+                'selectLangTitle': 'Please Select Language',
+                'errorRequired': 'Employee ID and Name are required!',
+                'errorCheckFailed': 'Qualification check failed. Please try again later.',
+                'errorDrawFailed': 'Network error during draw. Please try again later.',
+                'modalCongratsTitle': 'Congratulations!',
+                'modalSorryTitle': 'Sorry',
+                'modalErrorTitle': 'Error',
+                'modalDrawnPrefix': 'You have won: ',
+                'modalAlreadyDrawnPrefix': 'You have already participated. Your prize is: ',
+                'modalCloseBtn': 'Close',
+                'noPrizes': 'No prizes available',
+                'serverMsg_alreadyDrawn': 'You have already participated in the draw, you cannot participate again.',
+                'serverMsg_prizesGone': 'All prizes have been drawn!',
+                'serverMsg_concurrentFail': 'You were a bit slow, the prize was just taken. Please try again!',
+            },
+            'zh': {
+                'pageTitle': '幸運大抽獎',
+                'mainTitle': '幸運大抽獎',
+                'userInfoTitle': '填寫基本資料',
+                'userIdPlaceholder': '請輸入工號',
+                'userNamePlaceholder': '請輸入姓名',
+                'checkQualificationBtn': '前往抽獎',
+                'goBtn': 'GO',
+                'goBtnInProgress': '...',
+                'selectLangTitle': '請選擇語言',
+                'errorRequired': '工號和姓名為必填項！',
+                'errorCheckFailed': '查詢資格失敗，請稍後再試。',
+                'errorDrawFailed': '抽獎時發生網路錯誤，請稍後再試。',
+                'modalCongratsTitle': '恭喜中獎！',
+                'modalSorryTitle': '很抱歉',
+                'modalErrorTitle': '錯誤',
+                'modalDrawnPrefix': '您抽中了：',
+                'modalAlreadyDrawnPrefix': '您已參加過抽獎，您抽中的獎品是：',
+                'modalCloseBtn': '關閉',
+                'noPrizes': '無可用獎品',
+                'serverMsg_alreadyDrawn': '您已經參加過抽獎，不能重複參加。',
+                'serverMsg_prizesGone': '所有獎品都已經被抽完了！',
+                'serverMsg_concurrentFail': '手速太慢了，獎品剛好被抽走，請再試一次！',
+            }
+        };
+        let currentLang = 'zh'; // Default language
+
+        const wheel = document.getElementById('wheel');
+        const goButton = document.getElementById('drawButton'); // 轉盤中心的 "GO" 按鈕
+        const userIdInput = document.getElementById('userIdInput');
+        const userNameInput = document.getElementById('userNameInput');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultModal = document.getElementById('resultModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+
+        let allPrizes = [];
+        let availablePrizes = [];
+
+        // 流程控制相關元素
+        const wheelContainer = document.querySelector('.wheel-container');
+        const drawSection = document.getElementById('drawSection');
+        const langSelectSection = document.getElementById('langSelectSection');
+        const checkUserButton = document.getElementById('checkUserButton');
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+            localStorage.setItem('luckyDrawLang', lang);
+
+            document.title = translations[lang].pageTitle;
+
+            document.querySelectorAll('[data-i18n-key]').forEach(el => {
+                const key = el.getAttribute('data-i18n-key');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+
+            document.querySelectorAll('[data-i18n-placeholder-key]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder-key');
+                if (translations[lang][key]) {
+                    el.placeholder = translations[lang][key];
+                }
+            });
+        }
+
+        // 載入獎品列表
+        async function loadPrizes() {
+            try {
+                const response = await fetch('/api/prizes');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                allPrizes = await response.json();
+                // buildWheel(); // 移除此處的呼叫，改為在選擇語言後呼叫
+            } catch (error) {
+                console.error("Failed to load prizes:", error);
+                // 在主錯誤訊息區域顯示錯誤，而不是在隱藏的轉盤中
+                errorMessage.textContent = '無法載入獎品列表，請刷新頁面重試。';
+                checkUserButton.disabled = true; // 禁用按鈕，因為沒有獎品資料
+            }
+        }
+
+        function buildWheel() {
+            wheel.innerHTML = '';
+            // 清除舊的寶石
+            document.querySelectorAll('.jewel').forEach(j => j.remove());
+
+            // 使用剩餘數量大於 0 的獎品來建立轉盤
+            availablePrizes = allPrizes.filter(p => p.remaining > 0);
+            const numPrizes = availablePrizes.length;
+            if (numPrizes === 0) {
+                wheel.style.textAlign = 'center';
+                wheel.style.paddingTop = '150px';
+                wheel.textContent = translations[currentLang].noPrizes;
+                goButton.disabled = true;
+                return;
+            }
+            goButton.disabled = false;
+
+            const sliceAngle = 360 / numPrizes;
+
+            // 使用一組更多樣、更鮮明的顏色來避免重複和與背景色衝突
+            let colors = ['#e67e22', '#3498db', '#e74c3c', '#2ecc71', '#9b59b6', '#f1c40f'];
+
+            // 針對獎項為2個時，強制使用高對比顏色，以解決顏色區分問題
+            if (numPrizes === 2) {
+                colors = ['#e74c3c', '#3498db']; // 紅色和藍色
+            }
+
+            availablePrizes.forEach((prize, i) => {
+                const slice = document.createElement('div');
+                slice.className = 'wheel-slice';
+                slice.style.transform = `rotate(${sliceAngle * i}deg) skewY(${90 - sliceAngle}deg)`;
+                slice.style.backgroundColor = colors[i % colors.length];
+
+                const contentWrapper = document.createElement('div');
+                contentWrapper.className = 'content-wrapper';
+                contentWrapper.style.transform = `skewY(${-(90 - sliceAngle)}deg) rotate(${sliceAngle / 2}deg)`;
+
+                const innerContent = document.createElement('div');
+                innerContent.className = 'inner-content';
+
+                // 根據獎項數量動態設定 transform 參數
+                let dynamicTranslateX = 0;
+                let dynamicTranslateY = -40;
+                let dynamicRotate = 108;
+
+                switch (numPrizes) {
+                    case 2:
+                        dynamicTranslateX = -20;
+                        dynamicTranslateY = -80;
+                        dynamicRotate = 90;
+                        break;
+                    case 3:
+                        dynamicTranslateX = -20;
+                        dynamicTranslateY = -140;
+                        dynamicRotate = 60;
+                        break;
+                    case 4:
+                        dynamicTranslateY = -80;
+                        dynamicRotate = 90;
+                        break;
+                    case 5:
+                        dynamicTranslateY = -40;
+                        dynamicRotate = 108;
+                        break;
+                    default:
+                        // 對於其他數量的獎項，使用通用公式
+                        const baseTranslateY = -40;
+                        const adjustment = (numPrizes < 6) ? (6 - numPrizes) * -3 : (numPrizes - 6) * 1.5;
+                        dynamicTranslateY = baseTranslateY - adjustment;
+                        dynamicRotate = 108; // 保持預設旋轉角度
+                }
+                innerContent.style.transform = `translate(${dynamicTranslateX}px, ${dynamicTranslateY}px) rotate(${dynamicRotate}deg)`;
+
+                const img = document.createElement('img');
+                img.className = 'slice-image';
+                img.src = prize.image_icon || 'https://via.placeholder.com/80/FFFFFF/000000?text=?';
+
+                const text = document.createElement('span');
+                text.className = 'slice-text';
+                let prizeNameText = prize.name;
+                if (typeof prize.name === 'object' && prize.name !== null) {
+                    prizeNameText = prize.name[currentLang] || prize.name['zh'];
+                }
+                text.textContent = prizeNameText;
+                img.alt = prizeNameText;
+
+                innerContent.appendChild(img);
+                innerContent.appendChild(text);
+                contentWrapper.appendChild(innerContent);
+                slice.appendChild(contentWrapper);
+                wheel.appendChild(slice);
+            });
+
+            // 建立外圈寶石
+            const wheelContainer = document.querySelector('.wheel-container');
+            const numJewels = 24; // 固定寶石數量為24個，使其不隨獎項數量變動
+            const jewelAngle = 360 / numJewels;
+            const jewelColors = ['#FF4136', '#2ECC40', '#0074D9', '#AAAAAA', '#FF851B']; // 紅, 綠, 藍, 灰, 橘
+
+            for (let i = 0; i < numJewels; i++) {
+                const jewel = document.createElement('div');
+                jewel.className = 'jewel';
+                jewel.style.background = jewelColors[i % jewelColors.length];
+                // 旋轉寶石到定位，然後向外移動到金色底座上
+                jewel.style.transform = `rotate(${i * jewelAngle}deg) translate(205px)`;
+                wheelContainer.appendChild(jewel);
+            }
+        }
+
+        function selectLanguageAndShowForm(lang) {
+            setLanguage(lang);
+            localStorage.setItem('luckyDrawLang', lang); // Remember user's choice for reloads
+            langSelectSection.style.display = 'none';
+            drawSection.style.display = 'flex';
+        }
+
+        // 3. 新流程: 點擊「確認資格」按鈕
+        checkUserButton.addEventListener('click', async () => {
+            const userId = userIdInput.value.trim();
+            const userName = userNameInput.value.trim();
+
+            if (!userId || !userName) {
+                errorMessage.textContent = translations[currentLang].errorRequired;
+                return;
+            }
+            errorMessage.textContent = '';
+
+            try {
+                const res = await fetch(`/api/draw/check?userId=${encodeURIComponent(userId)}&userName=${encodeURIComponent(userName)}`);
+                if (!res.ok) throw new Error('伺服器查詢失敗');
+                const result = await res.json();
+
+                if (result.hasDrawn) {
+                    // 使用者已抽過獎，直接顯示結果
+                    let prizeNameText = result.prize.prizeName;
+                    if (typeof prizeNameText === 'object' && prizeNameText !== null) {
+                        prizeNameText = prizeNameText[currentLang] || prizeNameText['zh'];
+                    }
+                    // 修正：找出已中獎的獎品圖片並顯示
+                    const drawnPrizeDetails = allPrizes.find(p => p.id === result.prize.prizeId);
+                    const iconUrl = drawnPrizeDetails ? drawnPrizeDetails.image_icon : null;
+                    const photoUrl = drawnPrizeDetails ? drawnPrizeDetails.image_photo : null;
+                    showModal(translations[currentLang].modalSorryTitle, `${translations[currentLang].modalAlreadyDrawnPrefix}${prizeNameText}`, iconUrl, photoUrl);
+                } else {
+                    // 使用者尚未抽獎，建立並顯示轉盤
+                    drawSection.style.display = 'none';
+                    buildWheel();
+                    wheelContainer.style.display = 'flex';
+                }
+            } catch (error) {
+                errorMessage.textContent = translations[currentLang].errorCheckFailed;
+            }
+        });
+
+        // 執行抽獎
+        goButton.addEventListener('click', async () => {
+            const userId = userIdInput.value.trim();
+            const userName = userNameInput.value.trim();
+
+            // 再次驗證，以防使用者直接操作
+            if (!userId || !userName) {
+                // 如果到這一步還沒有使用者資訊，則切回輸入畫面
+                wheelContainer.style.display = 'none';
+                drawSection.style.display = 'block';
+                errorMessage.textContent = translations[currentLang].errorRequired;
+                return;
+            }
+
+            errorMessage.textContent = '';
+            goButton.disabled = true;
+            goButton.textContent = translations[currentLang].goBtnInProgress;
+
+            try {
+                const response = await fetch('/api/draw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, userName }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) { // 2xx 狀態碼
+                    const wonPrize = result.prize;
+                    const prizeIndex = availablePrizes.findIndex(p => p._id === wonPrize._id);
+
+                    let prizeNameText = wonPrize.name;
+                    if (typeof prizeNameText === 'object' && prizeNameText !== null) {
+                        prizeNameText = prizeNameText[currentLang] || prizeNameText['zh'];
+                    }
+
+                    if (prizeIndex !== -1) {
+                        const numPrizes = availablePrizes.length;
+                        const sliceAngle = 360 / numPrizes;
+                        const spins = 8; // 增加圈數讓動畫更刺激
+                        // 2. 核心計算修正：目標角度 = 270度(上方) - (獎品中心點的角度)
+                        const targetRotation = 270 - (prizeIndex * sliceAngle + sliceAngle / 2);
+                        const finalRotation = (spins * 360) + targetRotation;
+
+                        wheel.style.transform = `rotate(${finalRotation}deg)`;
+
+                        setTimeout(() => {
+                            showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo);
+                            goButton.disabled = true; // 抽完後禁用按鈕
+                            goButton.textContent = translations[currentLang].goBtn;
+                            loadPrizes(); // 重新載入獎品數量
+                        }, 6500); // 等待動畫結束
+                    } else {
+                        // 雖然中獎，但在轉盤上找不到，直接顯示結果
+                        showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo);
+                        goButton.disabled = true;
+                        goButton.textContent = translations[currentLang].goBtn;
+                        loadPrizes();
+                    }
+                } else {
+                    // 抽獎失敗 (已抽過、獎品抽完等)
+                    const messageKey = mapServerMessageToKey(result.message);
+                    const translatedMessage = messageKey ? translations[currentLang][messageKey] : result.message;
+                    const iconUrl = result.prize ? (allPrizes.find(p => p.id === result.prize.prizeId) || {}).image_icon : null;
+                    const photoUrl = result.prize ? (allPrizes.find(p => p.id === result.prize.prizeId) || {}).image_photo : null;
+                    showModal(translations[currentLang].modalSorryTitle, translatedMessage, iconUrl, photoUrl);
+                    goButton.disabled = false; // 允許重試 (例如伺服器忙碌時)
+                    goButton.textContent = translations[currentLang].goBtn;
+                }
+            } catch (error) {
+                showModal(translations[currentLang].modalErrorTitle, translations[currentLang].errorDrawFailed);
+                goButton.disabled = false;
+                goButton.textContent = translations[currentLang].goBtn;
+            }
+        });
+
+        function mapServerMessageToKey(message) {
+            if (message.includes('已經參加過抽獎')) return 'serverMsg_alreadyDrawn';
+            if (message.includes('獎品都已經被抽完')) return 'serverMsg_prizesGone';
+            if (message.includes('手速太慢了')) return 'serverMsg_concurrentFail';
+            return null;
+        }
+
+        function showModal(title, message, iconUrl, photoUrl) {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+
+            const modalIcon = document.getElementById('modalPrizeIcon');
+            const modalPhoto = document.getElementById('modalPrizePhoto');
+
+            if (iconUrl) {
+                modalIcon.src = iconUrl;
+                modalIcon.style.display = 'block';
+            } else {
+                modalIcon.style.display = 'none';
+            }
+            if (photoUrl) {
+                modalPhoto.src = photoUrl;
+                modalPhoto.style.display = 'block';
+            } else {
+                modalPhoto.style.display = 'none';
+            }
+
+            resultModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            resultModal.style.display = 'none';
+        }
+
+        // 初始載入
+        window.onload = () => {
+            // Hide sections that shouldn't be visible at start
+            drawSection.style.display = 'none';
+            wheelContainer.style.display = 'none';
+
+            // Show language selection
+            langSelectSection.style.display = 'block';
+
+            // Set a default language for the selection screen title and potential error messages
+            setLanguage('zh');
+            loadPrizes();
+        };
+    </script>
+
+</body>
+</html>

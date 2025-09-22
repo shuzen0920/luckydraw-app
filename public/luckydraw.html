@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>可愛風抽獎轉盤</title>
+  <style>
+    body {
+      font-family: 'Comic Sans MS', cursive;
+      text-align: center;
+      background-color: #fff0f5;
+    }
+    .wheel-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      margin: 50px auto;
+    }
+    .wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      position: relative;
+      transition: transform 4s cubic-bezier(0.33, 1, 0.68, 1);
+      box-shadow: 0 0 20px #ff69b4;
+      border: 8px dotted #ff69b4;
+    }
+    .segment {
+      position: absolute;
+      width: 50%;
+      height: 50%;
+      top: 50%;
+      left: 50%;
+      transform-origin: 0% 0%;
+      overflow: hidden;
+    }
+    .segment img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      position: absolute;
+      top: 10px;
+      left: 10px;
+    }
+    .pointer {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid #ff69b4;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #ff69b4;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    #result {
+      margin-top: 30px;
+    }
+    #result img {
+      max-width: 150px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎀 抽獎轉盤 🎀</h1>
+  <div class="wheel-container">
+    <div class="pointer"></div>
+    <div class="wheel" id="wheel">
+      <div class="segment" style="transform: rotate(0deg); background-color: #ffcccb;">
+        <img src="https://via.placeholder.com/100?text=A" alt="A">
+      </div>
+      <div class="segment" style="transform: rotate(72deg); background-color: #ffe4e1;">
+        <img src="https://via.placeholder.com/100?text=B" alt="B">
+      </div>
+      <div class="segment" style="transform: rotate(144deg); background-color: #fafad2;">
+        <img src="https://via.placeholder.com/100?text=C" alt="C">
+      </div>
+      <div class="segment" style="transform: rotate(216deg); background-color: #e0ffff;">
+        <img src="https://via.placeholder.com/100?text=D" alt="D">
+      </div>
+      <div class="segment" style="transform: rotate(288deg); background-color: #d8bfd8;">
+        <img src="https://via.placeholder.com/100?text=E" alt="E">
+      </div>
+    </div>
+  </div>
+
+  <button onclick="draw()">抽獎！</button>
+  <div id="result"></div>
+
+  <!-- 音效 -->
+  <audio id="spinSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_1e3b6b6c1a.mp3?filename=spin-1-110746.mp3"></audio>
+  <audio id="winSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_6c6a3b6c1a.mp3?filename=success-1-6297.mp3"></audio>
+
+  <script>
+    const prizeAngles = {
+      A: 36,
+      B: 108,
+      C: 180,
+      D: 252,
+      E: 324
+    };
+
+    async function draw() {
+      const wheel = document.getElementById('wheel');
+      const resultDiv = document.getElementById('result');
+      const spinSound = document.getElementById('spinSound');
+      const winSound = document.getElementById('winSound');
+
+      // 播放轉盤音效
+      spinSound.play();
+
+      const response = await fetch('http://localhost:3000/api/draws', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: 'sidney123',
+          name: 'Sidney Cheng',
+          email: 'sidney@example.com'
+        })
+      });
+
+      if (!response.ok) {
+  const error = await response.json();
+    if (error.error.includes('已經抽過')) {
+      alert('⚠️ 您已經抽過獎了，不能重複抽獎。');
+      // 可選：顯示已抽中的獎項
+      resultDiv.innerHTML = `<h2>您已抽過：${error.prize}</h2>`;
+    } else {
+      alert('❌ 抽獎失敗：' + error.error);
+    }
+    return;
+  }
+
+
+      const data = await response.json();
+      const prizeId = data.prize.id;
+      const prizeName = data.prize.name;
+      const prizeImage = data.prize.image_url;
+
+      const baseAngle = prizeAngles[prizeId];
+      const extraSpins = 5;
+      const finalAngle = 360 * extraSpins + baseAngle;
+
+      wheel.style.transform = `rotate(${finalAngle}deg)`;
+
+      setTimeout(() => {
+        spinSound.pause();
+        spinSound.currentTime = 0;
+        winSound.play();
+        resultDiv.innerHTML = `<h2>🎉 恭喜抽中：${prizeName}</h2>
+                               <img src="${prizeImage}" alt="${prizeName}">`;
+      }, 4000);
+    }
+  </script>
+</body>
+</html>

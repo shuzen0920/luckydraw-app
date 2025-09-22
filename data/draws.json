@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "653b8f9a2c1d8e4c1a9b1d8c",
+    "userId": "1002",
+    "userName": "李四",
+    "prizeId": "P02",
+    "prizeName": {
+      "zh": "二獎：藍牙耳機",
+      "en": "Second Prize: Bluetooth Earbuds"
+    },
+    "ipAddress": "203.0.113.55",
+    "timestamp": "2023-10-27T10:30:00.123Z",
+    "__v": 0
+  },
+  {
+    "_id": "653b8f8a2c1d8e4c1a9b1d8b",
+    "userId": "1001",
+    "userName": "張三",
+    "prizeId": "P01",
+    "prizeName": {
+      "zh": "頭獎：最新款手機",
+      "en": "First Prize: Latest Smartphone"
+    },
+    "ipAddress": "198.51.100.12",
+    "timestamp": "2023-10-27T10:25:15.456Z",
+    "__v": 0
+  }
+]

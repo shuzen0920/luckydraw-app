@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽獎管理後台</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        h1, h2 { color: #333; }
+        /* .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } */
+        .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        button { padding: 10px 15px; border: none; border-radius: 5px; color: white; cursor: pointer; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-primary { background-color: #3498db; }
+        .btn-secondary { background-color: #f39c12; }
+        .action-group {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .action-group h3 { margin-top: 0; }
+        .action-group input[type="text"],
+        .action-group input[type="number"],
+        .action-group input[type="file"] {
+            display: block;
+            width: calc(100% - 22px); /* 考慮 padding 和 border */
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .action-group button { margin-top: 5px; }
+        #message { margin-top: 15px; font-weight: bold; }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+            padding-top: 60px;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .image-preview {
+            display: none; /* Hide by default */
+            max-width: 100px;
+            max-height: 100px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 4px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+    <h1>抽獎管理後台</h1>
+
+    <div class="panel">
+        <h2>系統操作</h2>
+        <button id="resetButton" class="btn-danger">重設所有抽獎資料</button>
+        <button id="deleteAllPrizesButton" class="btn-danger" style="margin-left: 10px;">刪除所有獎項</button>
+        <div class="action-group">
+            <h3>新增單一獎品</h3>
+            <button id="openAddPrizeModalButton" class="btn-primary">新增獎品</button>
+        </div>
+        <div class="action-group">
+            <h3>上傳獎品清單 (Excel)</h3>
+            <p>請上傳包含 id, name_zh, name_en, total, image_icon, image_photo, remaining (選填) 欄位的 .xlsx 檔案。</p>
+            <input type="file" id="prizesFile" accept=".xlsx">
+            <button id="uploadButton" class="btn-primary">上傳檔案</button>
+        </div>
+        <div id="message"></div>
+    </div>
+
+    <div class="dashboard">
+        <div class="panel">
+            <h2>獎品狀態</h2>
+            <table id="prizesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>獎品名稱 (中)</th>
+                        <th>獎品名稱 (EN)</th>
+                        <th>總數</th>
+                        <th>剩餘</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="panel">
+            <h2>中獎名單</h2>
+            <table id="drawsTable">
+                <thead>
+                    <tr>
+                        <th>工號</th>
+                        <th>姓名</th>
+                        <th>獎品</th>
+                        <th>IP位址</th>
+                        <th>時間</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6">載入中...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Prize Modal -->
+    <div id="editPrizeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>編輯獎品</h2>
+            <input type="hidden" id="editOriginalPrizeId">
+            <div class="form-group">
+                <label for="editPrizeId">獎品ID</label>
+                <input type="text" id="editPrizeId">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editPrizeNameZh">獎品名稱 (中文)</label>
+                    <input type="text" id="editPrizeNameZh">
+                </div>
+                <div class="form-group">
+                    <label for="editPrizeNameEn">Prize Name (English)</label>
+                    <input type="text" id="editPrizeNameEn">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editPrizeTotal">總數量</label>
+                    <input type="number" id="editPrizeTotal" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="editPrizeRemaining">剩餘數量</label>
+                    <input type="number" id="editPrizeRemaining" min="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="editPrizeImageIcon">圖案URL (轉盤用)</label>
+                    <input type="text" id="editPrizeImageIcon">
+                    <img id="editPrizeIconPreview" class="image-preview" src="" alt="圖案預覽">
+                </div>
+                <div class="form-group">
+                    <label for="editPrizeImagePhoto">照片URL (結果用)</label>
+                    <input type="text" id="editPrizeImagePhoto">
+                    <img id="editPrizePhotoPreview" class="image-preview" src="" alt="照片預覽">
+                </div>
+            </div>
+            <button id="savePrizeButton" class="btn-primary">儲存變更</button>
+        </div>
+    </div>
+
+    <!-- Add Prize Modal -->
+    <div id="addPrizeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>新增獎品</h2>
+            <div class="form-group">
+                <label for="newPrizeId">獎品ID</label>
+                <input type="text" id="newPrizeId" placeholder="例如: P01">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="newPrizeNameZh">獎品名稱 (中文)</label>
+                    <input type="text" id="newPrizeNameZh">
+                </div>
+                <div class="form-group">
+                    <label for="newPrizeNameEn">Prize Name (English)</label>
+                    <input type="text" id="newPrizeNameEn">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="newPrizeTotal">總數量</label>
+                <input type="number" id="newPrizeTotal" min="1">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="newPrizeImageIcon">圖案URL (轉盤用)</label>
+                    <input type="text" id="newPrizeImageIcon">
+                    <img id="newPrizeIconPreview" class="image-preview" src="" alt="圖案預覽">
+                </div>
+                <div class="form-group">
+                    <label for="newPrizeImagePhoto">照片URL (結果用)</label>
+                    <input type="text" id="newPrizeImagePhoto">
+                    <img id="newPrizePhotoPreview" class="image-preview" src="" alt="照片預覽">
+                </div>
+            </div>
+            <button id="addPrizeButton" class="btn-primary">確認新增</button>
+        </div>
+    </div>
+
+    <script>
+        const prizesTableBody = document.querySelector('#prizesTable tbody');
+        const drawsTableBody = document.querySelector('#drawsTable tbody');
+        const resetButton = document.getElementById('resetButton');
+        const deleteAllPrizesButton = document.getElementById('deleteAllPrizesButton');
+        const uploadButton = document.getElementById('uploadButton');
+        const prizesFileInput = document.getElementById('prizesFile');
+        const messageDiv = document.getElementById('message');
+
+        const openAddPrizeModalButton = document.getElementById('openAddPrizeModalButton');
+        // 新增單一獎品的元素
+        const addPrizeButton = document.getElementById('addPrizeButton');
+        const newPrizeIdInput = document.getElementById('newPrizeId');
+        const newPrizeNameZhInput = document.getElementById('newPrizeNameZh');
+        const newPrizeNameEnInput = document.getElementById('newPrizeNameEn');
+        const newPrizeTotalInput = document.getElementById('newPrizeTotal');
+        const newPrizeImageIconInput = document.getElementById('newPrizeImageIcon');
+        const newPrizeImagePhotoInput = document.getElementById('newPrizeImagePhoto');
+
+        // 新增獎品 Modal 的元素
+        const addPrizeModal = document.getElementById('addPrizeModal');
+        const addPrizeCloseButton = addPrizeModal.querySelector('.close-button');
+        // 編輯獎品 Modal 的元素
+        const editModal = document.getElementById('editPrizeModal');
+        const editPrizeCloseButton = editModal.querySelector('.close-button');
+        const savePrizeButton = document.getElementById('savePrizeButton');
+        const editOriginalPrizeIdInput = document.getElementById('editOriginalPrizeId');
+        const editPrizeIdInput = document.getElementById('editPrizeId');
+        const editPrizeNameZhInput = document.getElementById('editPrizeNameZh');
+        const editPrizeNameEnInput = document.getElementById('editPrizeNameEn');
+        const editPrizeTotalInput = document.getElementById('editPrizeTotal');
+        const editPrizeRemainingInput = document.getElementById('editPrizeRemaining');
+        const editPrizeImageIconInput = document.getElementById('editPrizeImageIcon');
+        const editPrizeImagePhotoInput = document.getElementById('editPrizeImagePhoto');
+
+        // Preview Image elements
+        const newPrizeIconPreview = document.getElementById('newPrizeIconPreview');
+        const newPrizePhotoPreview = document.getElementById('newPrizePhotoPreview');
+        const editPrizeIconPreview = document.getElementById('editPrizeIconPreview');
+        const editPrizePhotoPreview = document.getElementById('editPrizePhotoPreview');
+
+        let allPrizes = []; // 用於儲存從 API 獲取的獎品列表
+
+        async function fetchData() {
+            // 載入獎品
+            try {
+                const prizesRes = await fetch('/api/prizes');
+                const prizes = await prizesRes.json();
+                allPrizes = prizes; // 儲存獎品資料以供編輯使用
+                prizesTableBody.innerHTML = prizes.map(p => `
+                    <tr>
+                        <td>${p.id}</td>
+                        <td>${p.name['zh']}</td>
+                        <td>${p.name['en']}</td>
+                        <td>${p.total}</td>
+                        <td>${p.remaining}</td>
+                        <td>
+                            <button class="btn-edit btn-secondary" data-id="${p.id}">編輯</button>
+                            <button class="btn-delete-prize btn-danger" data-id="${p.id}" style="margin-left: 5px;">刪除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                prizesTableBody.innerHTML = `<tr><td colspan="6" style="color:red;">無法載入獎品</td></tr>`;
+            }
+
+            // 載入中獎名單 (假設您已建立 /api/draws 路由)
+            try {
+                const drawsRes = await fetch('/api/draws'); // 您需要建立這個路由
+                const draws = await drawsRes.json();
+                drawsTableBody.innerHTML = draws.map(d => `
+                    <tr>
+                        <td>${d.userId}</td>
+                        <td>${d.userName}</td>
+                        <td>${typeof d.prizeName === 'object' && d.prizeName !== null ? d.prizeName['zh'] : d.prizeName}</td>
+                        <td>${d.ipAddress || 'N/A'}</td>
+                        <td>${new Date(d.timestamp).toLocaleString()}</td>
+                        <td>
+                            <button class="btn-delete-draw btn-danger" data-id="${d._id}">刪除</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (e) {
+                drawsTableBody.innerHTML = `<tr><td colspan="6" style="color:red;">無法載入中獎名單</td></tr>`;
+            }
+        }
+
+        resetButton.addEventListener('click', async () => {
+            if (!confirm('您確定要重設所有抽獎資料嗎？此操作會清空中獎名單並還原獎品數量。')) return;
+            
+            try {
+                const res = await fetch('/api/reset', { method: 'POST' });
+                const result = await res.json();
+                messageDiv.textContent = result.message;
+                messageDiv.style.color = result.success ? 'green' : 'red';
+                fetchData();
+            } catch (e) {
+                messageDiv.textContent = '重設失敗，請檢查伺服器連線。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        deleteAllPrizesButton.addEventListener('click', async () => {
+            if (!confirm('您確定要刪除所有獎項嗎？此操作無法復原。')) return;
+
+            try {
+                const res = await fetch('/api/prizes', { method: 'DELETE' });
+                const result = await res.json();
+                messageDiv.textContent = result.message || result.error;
+                messageDiv.style.color = result.success ? 'green' : 'red';
+                fetchData();
+            } catch (e) {
+                messageDiv.textContent = '刪除失敗，請檢查伺服器連線。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        uploadButton.addEventListener('click', async () => {
+            const file = prizesFileInput.files[0];
+            if (!file) {
+                messageDiv.textContent = '請先選擇一個檔案。';
+                messageDiv.style.color = 'red';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('prizesFile', file);
+
+            try {
+                const res = await fetch('/api/upload/prizes', { method: 'POST', body: formData });
+                const result = await res.json();
+                messageDiv.textContent = result.message;
+                messageDiv.style.color = result.success ? 'green' : 'red';
+                fetchData();
+            } catch (e) {
+                messageDiv.textContent = '上傳失敗，請檢查伺服器連線。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        addPrizeButton.addEventListener('click', async () => {
+            const id = newPrizeIdInput.value.trim();
+            const name_zh = newPrizeNameZhInput.value.trim();
+            const name_en = newPrizeNameEnInput.value.trim();
+            const total = newPrizeTotalInput.value;
+            const image_icon = newPrizeImageIconInput.value.trim();
+            const image_photo = newPrizeImagePhotoInput.value.trim();
+
+            if (!id || !name_zh || !name_en || !total) {
+                messageDiv.textContent = '獎品ID、中英文名稱和總數量為必填項。';
+                messageDiv.style.color = 'red';
+                return;
+            }
+
+            const prizeData = { id, name_zh, name_en, total: parseInt(total, 10), image_icon, image_photo };
+
+            try {
+                const res = await fetch('/api/prizes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(prizeData)
+                });
+                const result = await res.json();
+                messageDiv.textContent = result.message || result.error;
+                messageDiv.style.color = result.success ? 'green' : 'red';
+                if (result.success) {
+                    fetchData(); // 重新載入表格
+                    closeAddModal();
+                }
+            } catch (e) {
+                messageDiv.textContent = '新增失敗，請檢查伺服器連線。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        // --- Modal 相關邏輯 ---
+
+        function updatePreview(input, preview) {
+            const url = input.value.trim();
+            if (url) {
+                preview.src = url;
+                preview.style.display = 'block';
+                // Hide preview if image fails to load
+                preview.onerror = () => {
+                    preview.style.display = 'none';
+                    preview.src = '';
+                };
+            } else {
+                preview.style.display = 'none';
+                preview.src = '';
+            }
+        }
+
+        function openAddModal() {
+            // 清空輸入框以備下次使用
+            newPrizeIdInput.value = '';
+            newPrizeNameZhInput.value = '';
+            newPrizeNameEnInput.value = '';
+            newPrizeTotalInput.value = '';
+            newPrizeImageIconInput.value = '';
+            newPrizeImagePhotoInput.value = '';
+            updatePreview(newPrizeImageIconInput, newPrizeIconPreview); // Clear preview
+            updatePreview(newPrizeImagePhotoInput, newPrizePhotoPreview); // Clear preview
+            addPrizeModal.style.display = 'block';
+        }
+
+        function closeAddModal() {
+            addPrizeModal.style.display = 'none';
+        }
+
+        function openEditModal(prize) {
+            editOriginalPrizeIdInput.value = prize.id;
+            editPrizeIdInput.value = prize.id;
+            editPrizeNameZhInput.value = prize.name['zh'];
+            editPrizeNameEnInput.value = prize.name['en'];
+            editPrizeTotalInput.value = prize.total;
+            editPrizeRemainingInput.value = prize.remaining;
+            editPrizeImageIconInput.value = prize.image_icon || '';
+            editPrizeImagePhotoInput.value = prize.image_photo || '';
+            updatePreview(editPrizeImageIconInput, editPrizeIconPreview); // Update preview
+            updatePreview(editPrizeImagePhotoInput, editPrizePhotoPreview); // Update preview
+            editModal.style.display = 'block';
+        }
+
+        function closeEditModal() {
+            editModal.style.display = 'none';
+        }
+
+        // 按鈕事件
+        openAddPrizeModalButton.addEventListener('click', openAddModal);
+        addPrizeCloseButton.onclick = closeAddModal;
+        editPrizeCloseButton.onclick = closeEditModal;
+
+        // Add event listeners for live preview
+        newPrizeImageIconInput.addEventListener('input', () => updatePreview(newPrizeImageIconInput, newPrizeIconPreview));
+        newPrizeImagePhotoInput.addEventListener('input', () => updatePreview(newPrizeImagePhotoInput, newPrizePhotoPreview));
+        editPrizeImageIconInput.addEventListener('input', () => updatePreview(editPrizeImageIconInput, editPrizeIconPreview));
+        editPrizeImagePhotoInput.addEventListener('input', () => updatePreview(editPrizeImagePhotoInput, editPrizePhotoPreview));
+
+        // 使用事件委派來監聽編輯按鈕的點擊
+        prizesTableBody.addEventListener('click', async (event) => {
+            const target = event.target;
+            const prizeId = target.dataset.id;
+
+            if (target.classList.contains('btn-edit')) {
+                const prizeToEdit = allPrizes.find(p => p.id === prizeId);
+                if (prizeToEdit) {
+                    openEditModal(prizeToEdit);
+                }
+            }
+
+            if (target.classList.contains('btn-delete-prize')) {
+                if (confirm(`您確定要刪除獎品 ID: ${prizeId} 嗎？此操作無法復原。`)) {
+                    try {
+                        const res = await fetch(`/api/prizes/${prizeId}`, {
+                            method: 'DELETE'
+                        });
+                        const result = await res.json();
+                        messageDiv.textContent = result.message || result.error;
+                        messageDiv.style.color = result.success ? 'green' : 'red';
+                        if (result.success) {
+                            fetchData(); // 成功後刷新所有資料
+                        }
+                    } catch (e) {
+                        messageDiv.textContent = '刪除失敗，請檢查伺服器連線。';
+                        messageDiv.style.color = 'red';
+                    }
+                }
+            }
+        });
+
+        // 使用事件委派來監聽中獎名單的刪除按鈕點擊
+        drawsTableBody.addEventListener('click', async (event) => {
+            if (event.target.classList.contains('btn-delete-draw')) {
+                const drawId = event.target.dataset.id;
+                if (confirm('確定要刪除這筆中獎紀錄嗎？對應的獎品數量將會復原。')) {
+                    try {
+                        const res = await fetch(`/api/draws/${drawId}`, {
+                            method: 'DELETE'
+                        });
+                        const result = await res.json();
+                        // 使用 messageDiv 來顯示操作結果
+                        messageDiv.textContent = result.message || result.error;
+                        messageDiv.style.color = result.success ? 'green' : 'red';
+                        if (result.success) {
+                            fetchData(); // 成功後刷新所有資料
+                        }
+                    } catch (e) {
+                        messageDiv.textContent = '刪除失敗，請檢查伺服器連線。';
+                        messageDiv.style.color = 'red';
+                    }
+                }
+            }
+        });
+
+        // 點擊 modal 外部區域關閉
+        window.onclick = function(event) {
+            if (event.target == editModal) {
+                closeEditModal();
+            }
+            if (event.target == addPrizeModal) {
+                closeAddModal();
+            }
+        }
+
+        // 點擊儲存按鈕
+        savePrizeButton.addEventListener('click', async () => {
+            const originalId = editOriginalPrizeIdInput.value;
+            const updatedData = {
+                id: editPrizeIdInput.value.trim(),
+                name_zh: editPrizeNameZhInput.value.trim(),
+                name_en: editPrizeNameEnInput.value.trim(),
+                total: parseInt(editPrizeTotalInput.value, 10),
+                remaining: parseInt(editPrizeRemainingInput.value, 10),
+                image_icon: editPrizeImageIconInput.value.trim(),
+                image_photo: editPrizeImagePhotoInput.value.trim(),
+            };
+
+            if (!updatedData.id || !updatedData.name_zh || !updatedData.name_en || isNaN(updatedData.total) || isNaN(updatedData.remaining)) {
+                alert('獎品ID、中英文名稱、總數量和剩餘數量為必填項。');
+                return;
+            }
+
+            if (updatedData.remaining > updatedData.total) {
+                alert('剩餘數量不能超過總數量。');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/prizes/${originalId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                const result = await res.json();
+                messageDiv.textContent = result.message || result.error;
+                messageDiv.style.color = result.success ? 'green' : 'red';
+                if (result.success) {
+                    closeEditModal();
+                    fetchData();
+                }
+            } catch (e) {
+                messageDiv.textContent = '更新失敗，請檢查伺服器連線。';
+                messageDiv.style.color = 'red';
+            }
+        });
+
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
