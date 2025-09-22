@@ -14,7 +14,7 @@ connectDB();
 const prizesRouter = require('./routes/prizes');
 const resetRouter = require('./routes/reset_route');
 const uploadRouter = require('./routes/upload_route');
-const drawRouter = require('./routes/draw'); // 負責執行抽獎 (POST /api/draw)
+const drawRouter = require('./routes/raw'); // 負責執行抽獎 (POST /api/draw)
 const drawsRouter = require('./routes/draws'); // 負責獲取中獎名單 (GET /api/draws)
 
 const app = express();
