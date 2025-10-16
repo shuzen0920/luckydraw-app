@@ -24,6 +24,11 @@ const PrizeSchema = new mongoose.Schema({
   image_photo: {
     type: String,
   },
+  // --- Add this new field ---
+  photo_link: {
+    type: String, // The link will be stored as a string.
+    default: null // It's optional, so it can be null by default.
+  },
 });
 
 module.exports = mongoose.model('Prize', PrizeSchema);

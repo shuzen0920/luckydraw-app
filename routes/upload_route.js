@@ -40,7 +40,17 @@ router.post('/prizes', upload.single('prizesFile'), async (req, res) => {
         remaining: item.remaining !== undefined ? item.remaining : item.total, // 如果沒有提供剩餘數量，則預設為總數
         image_icon: item.image_icon || undefined,
         image_photo: item.image_photo || undefined,
+        // ===== MODIFICATION: Read photo_link from the Excel row =====
+        // If the 'photo_link' column is empty or doesn't exist, it will be saved as null.
+        photo_link: item.photo_link || null,
       };
+
+      // Basic validation to prevent inserting empty rows
+      if (!prizeData.id || !prizeData.name.zh || !prizeData.name.en || prizeData.total === undefined) {
+          // You can choose to throw an error or just skip this row
+          // For now, we'll return null and filter it out later
+          return null;
+      }
 
       return {
         updateOne: {
@@ -49,7 +59,11 @@ router.post('/prizes', upload.single('prizesFile'), async (req, res) => {
           upsert: true,                  // 如果找不到，則新增一筆
         },
       };
-    });
+    }).filter(op => op !== null); // Filter out any invalid rows
+
+    if (bulkOps.length === 0) {
+        return res.status(400).json({ success: false, message: 'Excel 檔案中沒有有效的獎品資料列。請檢查 id, name_zh, name_en, total 欄位是否齊全。' });
+    }
 
     // 執行批次操作
     const result = await Prize.bulkWrite(bulkOps);

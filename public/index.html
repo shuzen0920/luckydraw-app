@@ -214,10 +214,16 @@
         <div class="modal-content">
             <h2 id="modalTitle"></h2>
             <p id="modalMessage"></p>
+            <!-- ===== HTML 修改處 ===== -->
             <div id="modalImageContainer" style="display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
                 <img id="modalPrizeIcon" src="" alt="獎品圖案" style="max-width: 150px; max-height: 150px; border-radius: 10px; display: none; object-fit: contain; border: 1px solid #eee;">
-                <img id="modalPrizePhoto" src="" alt="獎品照片" style="max-width: 150px; max-height: 150px; border-radius: 10px; display: none; object-fit: contain; border: 1px solid #eee;">
+                
+                <!-- 將獎品照片用 <a> 標籤包起來，並給予 ID -->
+                <a id="modalPrizePhotoLink" href="#" target="_blank" rel="noopener noreferrer" style="display: none;">
+                    <img id="modalPrizePhoto" src="" alt="獎品照片" style="max-width: 150px; max-height: 150px; border-radius: 10px; display: block; object-fit: contain; border: 1px solid #eee; cursor: pointer;">
+                </a>
             </div>
+            <!-- ===== HTML 修改結束 ===== -->
             <button onclick="closeModal()" data-i18n-key="modalCloseBtn">關閉</button>
         </div>
     </div>
@@ -323,21 +329,22 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 allPrizes = await response.json();
-                // buildWheel(); // 移除此處的呼叫，改為在選擇語言後呼叫
+                // 假設獎品資料包含 photo_link，例如：
+                // allPrizes = [
+                //   { ..., image_photo: 'path/to/photo.jpg', photo_link: 'https://www.google.com.tw/' },
+                //   ...
+                // ];
             } catch (error) {
                 console.error("Failed to load prizes:", error);
-                // 在主錯誤訊息區域顯示錯誤，而不是在隱藏的轉盤中
                 errorMessage.textContent = '無法載入獎品列表，請刷新頁面重試。';
-                checkUserButton.disabled = true; // 禁用按鈕，因為沒有獎品資料
+                checkUserButton.disabled = true;
             }
         }
 
         function buildWheel() {
             wheel.innerHTML = '';
-            // 清除舊的寶石
             document.querySelectorAll('.jewel').forEach(j => j.remove());
 
-            // 使用剩餘數量大於 0 的獎品來建立轉盤
             availablePrizes = allPrizes.filter(p => p.remaining > 0);
             const numPrizes = availablePrizes.length;
             if (numPrizes === 0) {
@@ -350,13 +357,9 @@
             goButton.disabled = false;
 
             const sliceAngle = 360 / numPrizes;
-
-            // 使用一組更多樣、更鮮明的顏色來避免重複和與背景色衝突
             let colors = ['#e67e22', '#3498db', '#e74c3c', '#2ecc71', '#9b59b6', '#f1c40f'];
-
-            // 針對獎項為2個時，強制使用高對比顏色，以解決顏色區分問題
             if (numPrizes === 2) {
-                colors = ['#e74c3c', '#3498db']; // 紅色和藍色
+                colors = ['#e74c3c', '#3498db'];
             }
 
             availablePrizes.forEach((prize, i) => {
@@ -372,36 +375,20 @@
                 const innerContent = document.createElement('div');
                 innerContent.className = 'inner-content';
 
-                // 根據獎項數量動態設定 transform 參數
                 let dynamicTranslateX = 0;
                 let dynamicTranslateY = -40;
                 let dynamicRotate = 108;
 
                 switch (numPrizes) {
-                    case 2:
-                        dynamicTranslateX = -20;
-                        dynamicTranslateY = -80;
-                        dynamicRotate = 90;
-                        break;
-                    case 3:
-                        dynamicTranslateX = -20;
-                        dynamicTranslateY = -140;
-                        dynamicRotate = 60;
-                        break;
-                    case 4:
-                        dynamicTranslateY = -80;
-                        dynamicRotate = 90;
-                        break;
-                    case 5:
-                        dynamicTranslateY = -40;
-                        dynamicRotate = 108;
-                        break;
+                    case 2: dynamicTranslateX = -20; dynamicTranslateY = -80; dynamicRotate = 90; break;
+                    case 3: dynamicTranslateX = -20; dynamicTranslateY = -140; dynamicRotate = 60; break;
+                    case 4: dynamicTranslateY = -80; dynamicRotate = 90; break;
+                    case 5: dynamicTranslateY = -40; dynamicRotate = 108; break;
                     default:
-                        // 對於其他數量的獎項，使用通用公式
                         const baseTranslateY = -40;
                         const adjustment = (numPrizes < 6) ? (6 - numPrizes) * -3 : (numPrizes - 6) * 1.5;
                         dynamicTranslateY = baseTranslateY - adjustment;
-                        dynamicRotate = 108; // 保持預設旋轉角度
+                        dynamicRotate = 108;
                 }
                 innerContent.style.transform = `translate(${dynamicTranslateX}px, ${dynamicTranslateY}px) rotate(${dynamicRotate}deg)`;
 
@@ -425,17 +412,15 @@
                 wheel.appendChild(slice);
             });
 
-            // 建立外圈寶石
             const wheelContainer = document.querySelector('.wheel-container');
-            const numJewels = 24; // 固定寶石數量為24個，使其不隨獎項數量變動
+            const numJewels = 24;
             const jewelAngle = 360 / numJewels;
-            const jewelColors = ['#FF4136', '#2ECC40', '#0074D9', '#AAAAAA', '#FF851B']; // 紅, 綠, 藍, 灰, 橘
+            const jewelColors = ['#FF4136', '#2ECC40', '#0074D9', '#AAAAAA', '#FF851B'];
 
             for (let i = 0; i < numJewels; i++) {
                 const jewel = document.createElement('div');
                 jewel.className = 'jewel';
                 jewel.style.background = jewelColors[i % jewelColors.length];
-                // 旋轉寶石到定位，然後向外移動到金色底座上
                 jewel.style.transform = `rotate(${i * jewelAngle}deg) translate(205px)`;
                 wheelContainer.appendChild(jewel);
             }
@@ -443,12 +428,11 @@
 
         function selectLanguageAndShowForm(lang) {
             setLanguage(lang);
-            localStorage.setItem('luckyDrawLang', lang); // Remember user's choice for reloads
+            localStorage.setItem('luckyDrawLang', lang);
             langSelectSection.style.display = 'none';
             drawSection.style.display = 'flex';
         }
 
-        // 3. 新流程: 點擊「確認資格」按鈕
         checkUserButton.addEventListener('click', async () => {
             const userId = userIdInput.value.trim();
             const userName = userNameInput.value.trim();
@@ -465,18 +449,17 @@
                 const result = await res.json();
 
                 if (result.hasDrawn) {
-                    // 使用者已抽過獎，直接顯示結果
                     let prizeNameText = result.prize.prizeName;
                     if (typeof prizeNameText === 'object' && prizeNameText !== null) {
                         prizeNameText = prizeNameText[currentLang] || prizeNameText['zh'];
                     }
-                    // 修正：找出已中獎的獎品圖片並顯示
                     const drawnPrizeDetails = allPrizes.find(p => p.id === result.prize.prizeId);
                     const iconUrl = drawnPrizeDetails ? drawnPrizeDetails.image_icon : null;
                     const photoUrl = drawnPrizeDetails ? drawnPrizeDetails.image_photo : null;
-                    showModal(translations[currentLang].modalSorryTitle, `${translations[currentLang].modalAlreadyDrawnPrefix}${prizeNameText}`, iconUrl, photoUrl);
+                    // ===== JS 修改處 1 =====
+                    const photoLink = drawnPrizeDetails ? drawnPrizeDetails.photo_link : null;
+                    showModal(translations[currentLang].modalSorryTitle, `${translations[currentLang].modalAlreadyDrawnPrefix}${prizeNameText}`, iconUrl, photoUrl, photoLink);
                 } else {
-                    // 使用者尚未抽獎，建立並顯示轉盤
                     drawSection.style.display = 'none';
                     buildWheel();
                     wheelContainer.style.display = 'flex';
@@ -486,14 +469,11 @@
             }
         });
 
-        // 執行抽獎
         goButton.addEventListener('click', async () => {
             const userId = userIdInput.value.trim();
             const userName = userNameInput.value.trim();
 
-            // 再次驗證，以防使用者直接操作
             if (!userId || !userName) {
-                // 如果到這一步還沒有使用者資訊，則切回輸入畫面
                 wheelContainer.style.display = 'none';
                 drawSection.style.display = 'block';
                 errorMessage.textContent = translations[currentLang].errorRequired;
@@ -513,7 +493,7 @@
 
                 const result = await response.json();
 
-                if (response.ok) { // 2xx 狀態碼
+                if (response.ok) {
                     const wonPrize = result.prize;
                     const prizeIndex = availablePrizes.findIndex(p => p._id === wonPrize._id);
 
@@ -525,34 +505,36 @@
                     if (prizeIndex !== -1) {
                         const numPrizes = availablePrizes.length;
                         const sliceAngle = 360 / numPrizes;
-                        const spins = 8; // 增加圈數讓動畫更刺激
-                        // 2. 核心計算修正：目標角度 = 270度(上方) - (獎品中心點的角度)
+                        const spins = 8;
                         const targetRotation = 270 - (prizeIndex * sliceAngle + sliceAngle / 2);
                         const finalRotation = (spins * 360) + targetRotation;
 
                         wheel.style.transform = `rotate(${finalRotation}deg)`;
 
                         setTimeout(() => {
-                            showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo);
-                            goButton.disabled = true; // 抽完後禁用按鈕
+                            // ===== JS 修改處 2 =====
+                            showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo, wonPrize.photo_link);
+                            goButton.disabled = true;
                             goButton.textContent = translations[currentLang].goBtn;
-                            loadPrizes(); // 重新載入獎品數量
-                        }, 6500); // 等待動畫結束
+                            loadPrizes();
+                        }, 6500);
                     } else {
-                        // 雖然中獎，但在轉盤上找不到，直接顯示結果
-                        showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo);
+                        // ===== JS 修改處 3 =====
+                        showModal(translations[currentLang].modalCongratsTitle, `${translations[currentLang].modalDrawnPrefix}${prizeNameText}`, wonPrize.image_icon, wonPrize.image_photo, wonPrize.photo_link);
                         goButton.disabled = true;
                         goButton.textContent = translations[currentLang].goBtn;
                         loadPrizes();
                     }
                 } else {
-                    // 抽獎失敗 (已抽過、獎品抽完等)
                     const messageKey = mapServerMessageToKey(result.message);
                     const translatedMessage = messageKey ? translations[currentLang][messageKey] : result.message;
-                    const iconUrl = result.prize ? (allPrizes.find(p => p.id === result.prize.prizeId) || {}).image_icon : null;
-                    const photoUrl = result.prize ? (allPrizes.find(p => p.id === result.prize.prizeId) || {}).image_photo : null;
-                    showModal(translations[currentLang].modalSorryTitle, translatedMessage, iconUrl, photoUrl);
-                    goButton.disabled = false; // 允許重試 (例如伺服器忙碌時)
+                    const drawnPrizeDetails = result.prize ? allPrizes.find(p => p.id === result.prize.prizeId) : null;
+                    const iconUrl = drawnPrizeDetails ? drawnPrizeDetails.image_icon : null;
+                    const photoUrl = drawnPrizeDetails ? drawnPrizeDetails.image_photo : null;
+                    // ===== JS 修改處 4 =====
+                    const photoLink = drawnPrizeDetails ? drawnPrizeDetails.photo_link : null;
+                    showModal(translations[currentLang].modalSorryTitle, translatedMessage, iconUrl, photoUrl, photoLink);
+                    goButton.disabled = false;
                     goButton.textContent = translations[currentLang].goBtn;
                 }
             } catch (error) {
@@ -569,24 +551,40 @@
             return null;
         }
 
-        function showModal(title, message, iconUrl, photoUrl) {
+        // ===== JS 修改處 5 (showModal 函式) =====
+        function showModal(title, message, iconUrl, photoUrl, photoLink) {
             modalTitle.textContent = title;
             modalMessage.textContent = message;
 
             const modalIcon = document.getElementById('modalPrizeIcon');
-            const modalPhoto = document.getElementById('modalPrizePhoto');
+            const modalPhotoLink = document.getElementById('modalPrizePhotoLink'); // 取得 <a> 標籤
+            const modalPhoto = document.getElementById('modalPrizePhoto');       // 取得 <img> 標籤
 
+            // 處理獎品圖示
             if (iconUrl) {
                 modalIcon.src = iconUrl;
                 modalIcon.style.display = 'block';
             } else {
                 modalIcon.style.display = 'none';
             }
+
+            // 處理獎品照片和連結
             if (photoUrl) {
                 modalPhoto.src = photoUrl;
-                modalPhoto.style.display = 'block';
+                // 如果有提供連結，就設定 href 並讓滑鼠顯示為可點擊樣式
+                if (photoLink) {
+                    modalPhotoLink.href = photoLink;
+                    modalPhoto.style.cursor = 'pointer';
+                } else {
+                    // 如果沒有提供連結，設定為無效連結，並讓滑鼠顯示為預設樣式
+                    modalPhotoLink.href = '#';
+                    modalPhotoLink.onclick = (e) => e.preventDefault(); // 防止點擊後跳轉到頁面頂部
+                    modalPhoto.style.cursor = 'default';
+                }
+                modalPhotoLink.style.display = 'block'; // 顯示整個連結區塊
             } else {
-                modalPhoto.style.display = 'none';
+                // 如果連照片都沒有，就隱藏
+                modalPhotoLink.style.display = 'none';
             }
 
             resultModal.style.display = 'flex';
@@ -596,16 +594,10 @@
             resultModal.style.display = 'none';
         }
 
-        // 初始載入
         window.onload = () => {
-            // Hide sections that shouldn't be visible at start
             drawSection.style.display = 'none';
             wheelContainer.style.display = 'none';
-
-            // Show language selection
             langSelectSection.style.display = 'block';
-
-            // Set a default language for the selection screen title and potential error messages
             setLanguage('zh');
             loadPrizes();
         };

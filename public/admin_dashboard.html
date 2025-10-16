@@ -7,94 +7,30 @@
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
         h1, h2 { color: #333; }
-        /* .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; } */
         .panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; word-break: break-all; }
         th { background-color: #f2f2f2; }
         button { padding: 10px 15px; border: none; border-radius: 5px; color: white; cursor: pointer; }
         .btn-danger { background-color: #e74c3c; }
         .btn-primary { background-color: #3498db; }
         .btn-secondary { background-color: #f39c12; }
-        .action-group {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #eee;
-            border-radius: 5px;
-        }
+        .action-group { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; }
         .action-group h3 { margin-top: 0; }
         .action-group input[type="text"],
         .action-group input[type="number"],
-        .action-group input[type="file"] {
-            display: block;
-            width: calc(100% - 22px); /* 考慮 padding 和 border */
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+        .action-group input[type="file"] { display: block; width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
         .action-group button { margin-top: 5px; }
         #message { margin-top: 15px; font-weight: bold; }
-
-        /* Modal Styles */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
-            padding-top: 60px;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
-            border-radius: 8px;
-            position: relative;
-        }
-        .close-button {
-            color: #aaa;
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .close-button:hover,
-        .close-button:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); padding-top: 60px; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; position: relative; }
+        .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-
-        .form-row {
-            display: flex;
-            gap: 15px;
-            align-items: flex-start;
-        }
-        .form-row .form-group {
-            flex: 1;
-        }
-
-        .image-preview {
-            display: none; /* Hide by default */
-            max-width: 100px;
-            max-height: 100px;
-            margin-top: 10px;
-            border: 1px solid #ddd;
-            padding: 5px;
-            border-radius: 4px;
-            object-fit: contain;
-        }
+        .form-row { display: flex; gap: 15px; align-items: flex-start; }
+        .form-row .form-group { flex: 1; }
+        .image-preview { display: none; max-width: 100px; max-height: 100px; margin-top: 10px; border: 1px solid #ddd; padding: 5px; border-radius: 4px; object-fit: contain; }
     </style>
 </head>
 <body>
@@ -110,7 +46,8 @@
         </div>
         <div class="action-group">
             <h3>上傳獎品清單 (Excel)</h3>
-            <p>請上傳包含 id, name_zh, name_en, total, image_icon, image_photo, remaining (選填) 欄位的 .xlsx 檔案。</p>
+            <!-- ===== MODIFICATION 1: Updated Excel instructions ===== -->
+            <p>請上傳包含 id, name_zh, name_en, total, image_icon, image_photo, photo_link (選填), remaining (選填) 欄位的 .xlsx 檔案。</p>
             <input type="file" id="prizesFile" accept=".xlsx">
             <button id="uploadButton" class="btn-primary">上傳檔案</button>
         </div>
@@ -198,6 +135,11 @@
                     <img id="editPrizePhotoPreview" class="image-preview" src="" alt="照片預覽">
                 </div>
             </div>
+            <!-- ===== MODIFICATION 2: Added photo_link field to Edit Modal ===== -->
+            <div class="form-group">
+                <label for="editPrizePhotoLink">獎品照片連結 (選填)</label>
+                <input type="text" id="editPrizePhotoLink" placeholder="https://example.com/prize-info">
+            </div>
             <button id="savePrizeButton" class="btn-primary">儲存變更</button>
         </div>
     </div>
@@ -237,11 +179,17 @@
                     <img id="newPrizePhotoPreview" class="image-preview" src="" alt="照片預覽">
                 </div>
             </div>
+            <!-- ===== MODIFICATION 3: Added photo_link field to Add Modal ===== -->
+            <div class="form-group">
+                <label for="newPrizePhotoLink">獎品照片連結 (選填)</label>
+                <input type="text" id="newPrizePhotoLink" placeholder="點擊照片後要前往的網址">
+            </div>
             <button id="addPrizeButton" class="btn-primary">確認新增</button>
         </div>
     </div>
 
     <script>
+        // Existing element references
         const prizesTableBody = document.querySelector('#prizesTable tbody');
         const drawsTableBody = document.querySelector('#drawsTable tbody');
         const resetButton = document.getElementById('resetButton');
@@ -249,9 +197,10 @@
         const uploadButton = document.getElementById('uploadButton');
         const prizesFileInput = document.getElementById('prizesFile');
         const messageDiv = document.getElementById('message');
-
         const openAddPrizeModalButton = document.getElementById('openAddPrizeModalButton');
-        // 新增單一獎品的元素
+
+        // Add Prize Modal elements
+        const addPrizeModal = document.getElementById('addPrizeModal');
         const addPrizeButton = document.getElementById('addPrizeButton');
         const newPrizeIdInput = document.getElementById('newPrizeId');
         const newPrizeNameZhInput = document.getElementById('newPrizeNameZh');
@@ -259,13 +208,11 @@
         const newPrizeTotalInput = document.getElementById('newPrizeTotal');
         const newPrizeImageIconInput = document.getElementById('newPrizeImageIcon');
         const newPrizeImagePhotoInput = document.getElementById('newPrizeImagePhoto');
+        // ===== MODIFICATION 4: Get new element reference =====
+        const newPrizePhotoLinkInput = document.getElementById('newPrizePhotoLink');
 
-        // 新增獎品 Modal 的元素
-        const addPrizeModal = document.getElementById('addPrizeModal');
-        const addPrizeCloseButton = addPrizeModal.querySelector('.close-button');
-        // 編輯獎品 Modal 的元素
+        // Edit Prize Modal elements
         const editModal = document.getElementById('editPrizeModal');
-        const editPrizeCloseButton = editModal.querySelector('.close-button');
         const savePrizeButton = document.getElementById('savePrizeButton');
         const editOriginalPrizeIdInput = document.getElementById('editOriginalPrizeId');
         const editPrizeIdInput = document.getElementById('editPrizeId');
@@ -275,6 +222,12 @@
         const editPrizeRemainingInput = document.getElementById('editPrizeRemaining');
         const editPrizeImageIconInput = document.getElementById('editPrizeImageIcon');
         const editPrizeImagePhotoInput = document.getElementById('editPrizeImagePhoto');
+        // ===== MODIFICATION 5: Get new element reference =====
+        const editPrizePhotoLinkInput = document.getElementById('editPrizePhotoLink');
+
+        // Close buttons
+        const addPrizeCloseButton = addPrizeModal.querySelector('.close-button');
+        const editPrizeCloseButton = editModal.querySelector('.close-button');
 
         // Preview Image elements
         const newPrizeIconPreview = document.getElementById('newPrizeIconPreview');
@@ -282,14 +235,13 @@
         const editPrizeIconPreview = document.getElementById('editPrizeIconPreview');
         const editPrizePhotoPreview = document.getElementById('editPrizePhotoPreview');
 
-        let allPrizes = []; // 用於儲存從 API 獲取的獎品列表
+        let allPrizes = [];
 
         async function fetchData() {
-            // 載入獎品
             try {
                 const prizesRes = await fetch('/api/prizes');
                 const prizes = await prizesRes.json();
-                allPrizes = prizes; // 儲存獎品資料以供編輯使用
+                allPrizes = prizes;
                 prizesTableBody.innerHTML = prizes.map(p => `
                     <tr>
                         <td>${p.id}</td>
@@ -302,14 +254,13 @@
                             <button class="btn-delete-prize btn-danger" data-id="${p.id}" style="margin-left: 5px;">刪除</button>
                         </td>
                     </tr>
-                `).join('');
+                `).join('') || `<tr><td colspan="6">目前沒有獎品</td></tr>`;
             } catch (e) {
                 prizesTableBody.innerHTML = `<tr><td colspan="6" style="color:red;">無法載入獎品</td></tr>`;
             }
 
-            // 載入中獎名單 (假設您已建立 /api/draws 路由)
             try {
-                const drawsRes = await fetch('/api/draws'); // 您需要建立這個路由
+                const drawsRes = await fetch('/api/draws');
                 const draws = await drawsRes.json();
                 drawsTableBody.innerHTML = draws.map(d => `
                     <tr>
@@ -322,7 +273,7 @@
                             <button class="btn-delete-draw btn-danger" data-id="${d._id}">刪除</button>
                         </td>
                     </tr>
-                `).join('');
+                `).join('') || `<tr><td colspan="6">目前沒有中獎紀錄</td></tr>`;
             } catch (e) {
                 drawsTableBody.innerHTML = `<tr><td colspan="6" style="color:red;">無法載入中獎名單</td></tr>`;
             }
@@ -330,7 +281,6 @@
 
         resetButton.addEventListener('click', async () => {
             if (!confirm('您確定要重設所有抽獎資料嗎？此操作會清空中獎名單並還原獎品數量。')) return;
-            
             try {
                 const res = await fetch('/api/reset', { method: 'POST' });
                 const result = await res.json();
@@ -345,7 +295,6 @@
 
         deleteAllPrizesButton.addEventListener('click', async () => {
             if (!confirm('您確定要刪除所有獎項嗎？此操作無法復原。')) return;
-
             try {
                 const res = await fetch('/api/prizes', { method: 'DELETE' });
                 const result = await res.json();
@@ -365,10 +314,8 @@
                 messageDiv.style.color = 'red';
                 return;
             }
-
             const formData = new FormData();
             formData.append('prizesFile', file);
-
             try {
                 const res = await fetch('/api/upload/prizes', { method: 'POST', body: formData });
                 const result = await res.json();
@@ -388,6 +335,8 @@
             const total = newPrizeTotalInput.value;
             const image_icon = newPrizeImageIconInput.value.trim();
             const image_photo = newPrizeImagePhotoInput.value.trim();
+            // ===== MODIFICATION 6: Read value from new input =====
+            const photo_link = newPrizePhotoLinkInput.value.trim();
 
             if (!id || !name_zh || !name_en || !total) {
                 messageDiv.textContent = '獎品ID、中英文名稱和總數量為必填項。';
@@ -395,7 +344,7 @@
                 return;
             }
 
-            const prizeData = { id, name_zh, name_en, total: parseInt(total, 10), image_icon, image_photo };
+            const prizeData = { id, name_zh, name_en, total: parseInt(total, 10), image_icon, image_photo, photo_link };
 
             try {
                 const res = await fetch('/api/prizes', {
@@ -407,7 +356,7 @@
                 messageDiv.textContent = result.message || result.error;
                 messageDiv.style.color = result.success ? 'green' : 'red';
                 if (result.success) {
-                    fetchData(); // 重新載入表格
+                    fetchData();
                     closeAddModal();
                 }
             } catch (e) {
@@ -416,18 +365,12 @@
             }
         });
 
-        // --- Modal 相關邏輯 ---
-
         function updatePreview(input, preview) {
             const url = input.value.trim();
             if (url) {
                 preview.src = url;
                 preview.style.display = 'block';
-                // Hide preview if image fails to load
-                preview.onerror = () => {
-                    preview.style.display = 'none';
-                    preview.src = '';
-                };
+                preview.onerror = () => { preview.style.display = 'none'; preview.src = ''; };
             } else {
                 preview.style.display = 'none';
                 preview.src = '';
@@ -435,15 +378,16 @@
         }
 
         function openAddModal() {
-            // 清空輸入框以備下次使用
             newPrizeIdInput.value = '';
             newPrizeNameZhInput.value = '';
             newPrizeNameEnInput.value = '';
             newPrizeTotalInput.value = '';
             newPrizeImageIconInput.value = '';
             newPrizeImagePhotoInput.value = '';
-            updatePreview(newPrizeImageIconInput, newPrizeIconPreview); // Clear preview
-            updatePreview(newPrizeImagePhotoInput, newPrizePhotoPreview); // Clear preview
+            // ===== MODIFICATION 7: Clear new input on open =====
+            newPrizePhotoLinkInput.value = '';
+            updatePreview(newPrizeImageIconInput, newPrizeIconPreview);
+            updatePreview(newPrizeImagePhotoInput, newPrizePhotoPreview);
             addPrizeModal.style.display = 'block';
         }
 
@@ -460,8 +404,10 @@
             editPrizeRemainingInput.value = prize.remaining;
             editPrizeImageIconInput.value = prize.image_icon || '';
             editPrizeImagePhotoInput.value = prize.image_photo || '';
-            updatePreview(editPrizeImageIconInput, editPrizeIconPreview); // Update preview
-            updatePreview(editPrizeImagePhotoInput, editPrizePhotoPreview); // Update preview
+            // ===== MODIFICATION 8: Populate new input on open =====
+            editPrizePhotoLinkInput.value = prize.photo_link || '';
+            updatePreview(editPrizeImageIconInput, editPrizeIconPreview);
+            updatePreview(editPrizeImagePhotoInput, editPrizePhotoPreview);
             editModal.style.display = 'block';
         }
 
@@ -469,41 +415,30 @@
             editModal.style.display = 'none';
         }
 
-        // 按鈕事件
         openAddPrizeModalButton.addEventListener('click', openAddModal);
         addPrizeCloseButton.onclick = closeAddModal;
         editPrizeCloseButton.onclick = closeEditModal;
 
-        // Add event listeners for live preview
         newPrizeImageIconInput.addEventListener('input', () => updatePreview(newPrizeImageIconInput, newPrizeIconPreview));
         newPrizeImagePhotoInput.addEventListener('input', () => updatePreview(newPrizeImagePhotoInput, newPrizePhotoPreview));
         editPrizeImageIconInput.addEventListener('input', () => updatePreview(editPrizeImageIconInput, editPrizeIconPreview));
         editPrizeImagePhotoInput.addEventListener('input', () => updatePreview(editPrizeImagePhotoInput, editPrizePhotoPreview));
 
-        // 使用事件委派來監聽編輯按鈕的點擊
         prizesTableBody.addEventListener('click', async (event) => {
             const target = event.target;
             const prizeId = target.dataset.id;
-
             if (target.classList.contains('btn-edit')) {
                 const prizeToEdit = allPrizes.find(p => p.id === prizeId);
-                if (prizeToEdit) {
-                    openEditModal(prizeToEdit);
-                }
+                if (prizeToEdit) openEditModal(prizeToEdit);
             }
-
             if (target.classList.contains('btn-delete-prize')) {
                 if (confirm(`您確定要刪除獎品 ID: ${prizeId} 嗎？此操作無法復原。`)) {
                     try {
-                        const res = await fetch(`/api/prizes/${prizeId}`, {
-                            method: 'DELETE'
-                        });
+                        const res = await fetch(`/api/prizes/${prizeId}`, { method: 'DELETE' });
                         const result = await res.json();
                         messageDiv.textContent = result.message || result.error;
                         messageDiv.style.color = result.success ? 'green' : 'red';
-                        if (result.success) {
-                            fetchData(); // 成功後刷新所有資料
-                        }
+                        if (result.success) fetchData();
                     } catch (e) {
                         messageDiv.textContent = '刪除失敗，請檢查伺服器連線。';
                         messageDiv.style.color = 'red';
@@ -512,22 +447,16 @@
             }
         });
 
-        // 使用事件委派來監聽中獎名單的刪除按鈕點擊
         drawsTableBody.addEventListener('click', async (event) => {
             if (event.target.classList.contains('btn-delete-draw')) {
                 const drawId = event.target.dataset.id;
                 if (confirm('確定要刪除這筆中獎紀錄嗎？對應的獎品數量將會復原。')) {
                     try {
-                        const res = await fetch(`/api/draws/${drawId}`, {
-                            method: 'DELETE'
-                        });
+                        const res = await fetch(`/api/draws/${drawId}`, { method: 'DELETE' });
                         const result = await res.json();
-                        // 使用 messageDiv 來顯示操作結果
                         messageDiv.textContent = result.message || result.error;
                         messageDiv.style.color = result.success ? 'green' : 'red';
-                        if (result.success) {
-                            fetchData(); // 成功後刷新所有資料
-                        }
+                        if (result.success) fetchData();
                     } catch (e) {
                         messageDiv.textContent = '刪除失敗，請檢查伺服器連線。';
                         messageDiv.style.color = 'red';
@@ -536,17 +465,11 @@
             }
         });
 
-        // 點擊 modal 外部區域關閉
         window.onclick = function(event) {
-            if (event.target == editModal) {
-                closeEditModal();
-            }
-            if (event.target == addPrizeModal) {
-                closeAddModal();
-            }
+            if (event.target == editModal) closeEditModal();
+            if (event.target == addPrizeModal) closeAddModal();
         }
 
-        // 點擊儲存按鈕
         savePrizeButton.addEventListener('click', async () => {
             const originalId = editOriginalPrizeIdInput.value;
             const updatedData = {
@@ -557,13 +480,14 @@
                 remaining: parseInt(editPrizeRemainingInput.value, 10),
                 image_icon: editPrizeImageIconInput.value.trim(),
                 image_photo: editPrizeImagePhotoInput.value.trim(),
+                // ===== MODIFICATION 9: Read value from new input on save =====
+                photo_link: editPrizePhotoLinkInput.value.trim(),
             };
 
             if (!updatedData.id || !updatedData.name_zh || !updatedData.name_en || isNaN(updatedData.total) || isNaN(updatedData.remaining)) {
                 alert('獎品ID、中英文名稱、總數量和剩餘數量為必填項。');
                 return;
             }
-
             if (updatedData.remaining > updatedData.total) {
                 alert('剩餘數量不能超過總數量。');
                 return;
